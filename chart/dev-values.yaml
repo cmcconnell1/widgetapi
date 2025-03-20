@@ -1,0 +1,57 @@
+# For AWS Dev EKS, we override the namespace, enable ingress, and enforce resource limits.
+
+# normally this would be higher but not for this POC single replca service
+replicaCount: 1
+
+image:
+  repository: mayth/simple-upload-server 
+  #tag: dev-latest
+  tag: b0e711dcdfe9be60ed20ef5447a20dbd42f467c7f16772c0581241f9e82ea9ec
+
+service:
+  type: ClusterIP
+  port: 8080
+
+ingress:
+  enabled: true
+  className: alb
+  annotations:
+    kubernetes.io/ingress.class: "alb"
+    alb.ingress.kubernetes.io/scheme: "internet-facing"
+  hosts:
+    - host: dev.widgetapi.example.com
+      paths:
+        - path: /
+          pathType: ImplementationSpecific
+  tls:
+    - hosts:
+        - dev.widgetapi.example.com
+      secretName: dev-wildcard-cert
+
+resources:
+  requests:
+    cpu: "500m"
+    memory: "1Gi"
+  limits:
+    cpu: "1"
+    memory: "2Gi"
+
+persistence:
+  enabled: true
+  storageClass: gp2
+  size: 10Gi
+
+env:
+  LOG_LEVEL: "info"
+  # secrets must be created in the same namespace as the deployment like this
+  #kubectl create secret generic db-credentials \
+  #  --namespace widgetapi-dev \
+  #  --from-literal=DATABASE_URL="postgres://user:pass@prod-db.widgetapi.example.com:5432/widgetapi"
+  DATABASE_URL:
+    secretKeyRef:
+      name: db-credentials
+      key: DATABASE_URL
+      
+environment:
+  TOKEN: "sometoken"  # Ensure consistency in naming across templates
+  UPLOAD_LIMIT: "200MB"

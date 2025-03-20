@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ .Release.Name }}-test-readiness"
+  annotations:
+    "helm.sh/hook": test
+spec:
+  containers:
+  - name: kubectl
+    image: bitnami/kubectl:1.29.1 # 🔹 Pin the version for stability
+    command:
+    - sh
+    - -c
+    - |
+      echo "🔎 Checking WidgetAPI pod readiness..."
+      kubectl wait --for=condition=Ready pod \
+        -l app={{ .Release.Name }} --timeout=60s -n {{ .Release.Namespace }}
+
+      if [ $? -eq 0 ]; then
+        echo "✅ WidgetAPI pod is ready!"
+        exit 0
+      else
+        echo "❌ ERROR: WidgetAPI pod is not ready within 60s."
+        exit 1
+      fi
+  restartPolicy: Never

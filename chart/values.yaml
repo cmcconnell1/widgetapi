@@ -1,0 +1,66 @@
+replicaCount: 2
+
+image:
+  repository: mayth/simple-upload-server
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 8080
+
+ingress:
+  className: "nginx"  # Change to "alb" for AWS
+  host: "widgetapi.local"
+#ingress:
+#  enabled: true
+#  className: "alb"
+#  host: ""  # Allows IP-based access
+#  annotations:
+#    cert-manager.io/cluster-issuer: "selfsigned-issuer"
+#  tls:
+#    - hosts:
+#        - "widgetapi.local"
+#      secretName: widgetapi-tls
+
+persistence:
+  enabled: true
+  storageClass: "default"
+  accessMode: ReadWriteOnce
+  size: 1Gi
+
+resources:
+  requests:
+    cpu: "100m"
+    memory: "256Mi"
+  limits:
+    cpu: "500m"
+    memory: "512Mi"
+
+livenessProbe:
+  httpGet:
+    path: /healthz
+    port: 8080
+  initialDelaySeconds: 5
+  periodSeconds: 10
+
+readinessProbe:
+  httpGet:
+    path: /healthz
+    port: 8080
+  initialDelaySeconds: 3
+  periodSeconds: 5
+
+terminationGracePeriodSeconds: 30
+
+networkPolicy:
+  enabled: true
+
+environment:
+  API_TOKEN: "sometoken"
+  UPLOAD_LIMIT: "50MB"
+
+image:
+  repository: ""
+  tag: ""
+  pullPolicy: Always

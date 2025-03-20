@@ -1,0 +1,46 @@
+# For local development using Minikube or Kind, we override the service type and ingress settings.
+
+# Normally this would be higher, but for this POC single replica service
+replicaCount: 1
+
+image:
+  repository: mayth/simple-upload-server
+  tag: "sha256:b0e711dcdfe9be60ed20ef5447a20dbd42f467c7f16772c0581241f9e82ea9ec"
+  pullPolicy: Always
+
+service:
+  type: NodePort
+  port: 8080
+
+ingress:
+  enabled: true  # ✅ Set to true for local ingress testing
+  className: "nginx"  # ✅ Explicitly set Ingress class
+  host: "widgetapi.local"
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    cert-manager.io/cluster-issuer: "selfsigned-issuer"
+  tls:
+    enabled: true
+    secretName: widgetapi-tls
+
+resources:
+  requests:
+    cpu: "100m"
+    memory: "256Mi"
+  limits:
+    cpu: "250m"
+    memory: "512Mi"
+
+persistence:
+  enabled: true  # ✅ Enable persistent storage for local
+  storageClass: "standard"
+  accessMode: "ReadWriteOnce"
+  size: "1Gi"
+  mountPath: "/widgetapi/data"  # ✅ Ensure the mount path matches the app’s expected directory
+
+env:
+  LOG_LEVEL: "debug"
+
+environment:
+  TOKEN: "sometoken"  # Ensure consistency in naming across templates
+  UPLOAD_LIMIT: "100MB"

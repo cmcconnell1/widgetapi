@@ -1,0 +1,70 @@
+# Includes an Alpine-based debug sidecar container that mounts the same persistent volume as your application. This allows us to inspect, list, and validate file operations.
+# Sidecar (debug-sidecar) runs alpine:latest, which provides:
+# sh, ls, cat, mkdir, chmod, and other utilities.
+# It mounts the same /widgetapi/data volume, so we can verify file creation.
+# It runs indefinitely (sleep infinity), so we can debug at any time.
+#
+# Once the pod is running, exec into the debug sidecar instead:
+# kubectl exec -it $(kubectl get pod -l app=widgetapi -n widgetapi-local -o jsonpath="{.items[0].metadata.name}") -n widgetapi-local -c debug-sidecar -- sh
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: widgetapi
+  labels:
+    app: widgetapi
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: widgetapi
+  template:
+    metadata:
+      labels:
+        app: widgetapi
+    spec:
+      securityContext:
+        fsGroup: 1000  # 🔹 Ensures volume is writable by non-root users
+      containers:
+        - name: widgetapi
+          image: "{{ .Values.image.repository }}@{{ .Values.image.tag }}"
+          ports:
+            - containerPort: 8080
+          args: ["-addr", "0.0.0.0:8080"]  # ✅ Ensure app listens externally
+          volumeMounts:
+            - name: data
+              mountPath: /widgetapi/data
+              subPath: data  # 🔹 Ensures a subdirectory is used correctly
+          env:
+            - name: TOKEN
+              value: {{ .Values.environment.TOKEN | quote }}
+            - name: UPLOAD_LIMIT
+              value: {{ .Values.environment.UPLOAD_LIMIT | quote }}
+            - name: LISTEN_ADDR
+              value: "0.0.0.0:8080"
+            - name: DATA_PATH
+              value: "/widgetapi/data"
+          securityContext:
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop: ["ALL"]
+
+        # 🔍 **Debugging Sidecar Container**
+        - name: debug-sidecar
+          image: alpine:latest  # ✅ Lightweight image with sh, ls, cat, etc.
+          command: ["/bin/sh", "-c", "sleep infinity"]
+          volumeMounts:
+            - name: data
+              mountPath: /widgetapi/data
+          securityContext:
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: widgetapi-pvc

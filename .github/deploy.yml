@@ -1,0 +1,63 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - dev
+      - stage
+      - prod
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ github.ref_name }}
+
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Configure AWS Credentials using OIDC
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Load Environment Variables
+        run: |
+          echo "AWS_ACCOUNT_ID=${{ secrets.AWS_ACCOUNT_ID }}" >> $GITHUB_ENV
+          echo "AWS_REGION=${{ secrets.AWS_REGION }}" >> $GITHUB_ENV
+          echo "EKS_CLUSTER_NAME=widgetapi-${{ github.ref_name }}" >> $GITHUB_ENV
+
+      - name: Set Up IAM Roles
+        run: bash scripts/setup-iam-role.sh
+
+      - name: Validate AWS Authentication
+        run: |
+          echo "🔹 Validating AWS Credentials..."
+          aws sts get-caller-identity
+
+      - name: Validate EKS Cluster
+        run: bash scripts/manage-eks.sh ${{ github.ref_name }}
+
+      - name: Deploy Application to EKS
+        run: bash scripts/deploy.sh ${{ github.ref_name }}
+
+      - name: Verify Helm Deployment
+        run: helm test widgetapi --namespace widgetapi-${{ github.ref_name }}
+
+      - name: Run Container Security Scan
+        run: bash scripts/k8s-security-check.sh
+
+      - name: Output Kubernetes Resources (Debugging)
+        if: always()
+        run: |
+          echo "📌 Checking running pods in widgetapi-${{ github.ref_name }}"
+          kubectl get pods -n widgetapi-${{ github.ref_name }} -o wide
+          echo "📌 Checking services in widgetapi-${{ github.ref_name }}"
+          kubectl get svc -n widgetapi-${{ github.ref_name }}
+          echo "📌 Checking ingress in widgetapi-${{ github.ref_name }}"
+          kubectl get ingress -n widgetapi-${{ github.ref_name }}
