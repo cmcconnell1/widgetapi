@@ -1,34 +1,40 @@
-replicaCount: 2
+replicaCount: 1
 
+# 🔹 Image settings (Overridden per environment)
 image:
-  repository: mayth/simple-upload-server
-  tag: "latest"
+  repository: mayth/simple-upload-server  # 🔹 Default image
+  tag: "latest"  # 🔹 This should be overridden by `dev-values.yaml`, `stage-values.yaml`, `prod-values.yaml`
   pullPolicy: IfNotPresent
 
+# 🔹 Service Configuration
 service:
-  type: ClusterIP
+  type: ClusterIP  # 🔹 Use ClusterIP by default (AWS ALB will provide external access)
   port: 8080
 
+# 🔹 Ingress Configuration (Helm Overrides for AWS)
 ingress:
-  className: "nginx"  # Change to "alb" for AWS
-  host: "widgetapi.local"
-#ingress:
-#  enabled: true
-#  className: "alb"
-#  host: ""  # Allows IP-based access
-#  annotations:
-#    cert-manager.io/cluster-issuer: "selfsigned-issuer"
-#  tls:
-#    - hosts:
-#        - "widgetapi.local"
-#      secretName: widgetapi-tls
+  enabled: true
+  className: "nginx"  # 🔹 "nginx" for Local, "alb" for AWS
+  host: ""
+  annotations:
+    cert-manager.io/cluster-issuer: "selfsigned-cluster-issuer"
+  tls:
+    - hosts:
+        - ""
+      secretName: widgetapi-tls
 
+certManager:
+  clusterIssuer:
+    create: true  # Set to false if the issuer is managed externally
+
+# 🔹 Persistence & Storage
 persistence:
   enabled: true
-  storageClass: "default"
+  storageClass: "default"  # 🔹 "default" for Local, "gp2" or "gp3" for AWS
   accessMode: ReadWriteOnce
-  size: 1Gi
+  size: 1Gi  # 🔹 Override in dev-values.yaml, stage-values.yaml, prod-values.yaml
 
+# 🔹 Compute Resources
 resources:
   requests:
     cpu: "100m"
@@ -37,6 +43,7 @@ resources:
     cpu: "500m"
     memory: "512Mi"
 
+# 🔹 Liveness & Readiness Probes
 livenessProbe:
   httpGet:
     path: /healthz
@@ -51,15 +58,19 @@ readinessProbe:
   initialDelaySeconds: 3
   periodSeconds: 5
 
+# 🔹 Graceful Shutdown
 terminationGracePeriodSeconds: 30
 
+# 🔹 Network Security (Enforced)
 networkPolicy:
   enabled: true
 
+# 🔹 Environment Variables (Override per environment)
 environment:
   API_TOKEN: "sometoken"
   UPLOAD_LIMIT: "50MB"
 
+# ✅ Ensure Image Fields Are Not Overwritten Incorrectly
 image:
   repository: ""
   tag: ""

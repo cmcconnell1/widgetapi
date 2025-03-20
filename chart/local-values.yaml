@@ -1,27 +1,31 @@
-# For local development using Minikube or Kind, we override the service type and ingress settings.
+# ✅ Local Development Configuration (Minikube/Kind)
+# Ensures proper overrides for local testing.
 
-# Normally this would be higher, but for this POC single replica service
-replicaCount: 1
+replicaCount: 1  # ✅ Single replica for local development
 
 image:
-  repository: mayth/simple-upload-server
-  tag: "sha256:b0e711dcdfe9be60ed20ef5447a20dbd42f467c7f16772c0581241f9e82ea9ec"
+  repository: "mayth/simple-upload-server@sha256:b0e711dcdfe9be60ed20ef5447a20dbd42f467c7f16772c0581241f9e82ea9ec"
   pullPolicy: Always
 
 service:
-  type: NodePort
+  type: NodePort  # ✅ Use NodePort for local testing
   port: 8080
 
 ingress:
-  enabled: true  # ✅ Set to true for local ingress testing
-  className: "nginx"  # ✅ Explicitly set Ingress class
+  enabled: true  # ✅ Enable local ingress testing
+  className: "nginx"  # ✅ Explicitly use NGINX for local
   host: "widgetapi.local"
   annotations:
     kubernetes.io/ingress.class: "nginx"
     cert-manager.io/cluster-issuer: "selfsigned-issuer"
   tls:
     enabled: true
-    secretName: widgetapi-tls
+    secretName: widgetapi-tls  # ✅ Ensure TLS secret is set correctly
+
+# ✅ For local testing, ensure a self-signed ClusterIssuer is created
+certManager:
+  clusterIssuer:
+    create: true  # ✅ Local uses self-signed certs
 
 resources:
   requests:
@@ -36,11 +40,11 @@ persistence:
   storageClass: "standard"
   accessMode: "ReadWriteOnce"
   size: "1Gi"
-  mountPath: "/widgetapi/data"  # ✅ Ensure the mount path matches the app’s expected directory
+  mountPath: "/widgetapi/data"  # ✅ Ensure mount path is correct
 
 env:
   LOG_LEVEL: "debug"
 
 environment:
-  TOKEN: "sometoken"  # Ensure consistency in naming across templates
+  TOKEN: "sometoken"  # ✅ Consistency in variable naming
   UPLOAD_LIMIT: "100MB"

@@ -1,0 +1,64 @@
+<mxfile host="app.diagrams.net" modified="2025-03-20T16:10:16.224Z" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36" version="21.6.2" etag="6jz8ZgLMlgdQATPVyN-g" type="device">
+  <diagram name="WidgetAPI Logical Network Architecture" id="0">
+    <mxGraphModel dx="3284" dy="1371" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="eksCluster" value="AWS EKS Cluster" style="rounded=1;fillColor=#EAF3FA;strokeColor=#1565C0;fontColor=#000000;" parent="1" vertex="1">
+          <mxGeometry x="150" y="50" width="1890" height="1030" as="geometry" />
+        </mxCell>
+        <mxCell id="namespaceDev" value="Namespace: widgetapi-dev" style="rounded=1;fillColor=#BBDEFB;strokeColor=#1565C0;fontColor=#000000;" parent="eksCluster" vertex="1">
+          <mxGeometry x="159.99999999999994" y="130" width="787.5" height="257.5" as="geometry" />
+        </mxCell>
+        <mxCell id="widgetapi" value="WidgetAPI Pods" style="rounded=1;fillColor=#D1C4E9;strokeColor=#512DA8;fontColor=#000000;" parent="namespaceDev" vertex="1">
+          <mxGeometry x="63" y="51.5" width="630" height="154.5" as="geometry" />
+        </mxCell>
+        <mxCell id="namespaceStage" value="Namespace: widgetapi-stage" style="rounded=1;fillColor=#BBDEFB;strokeColor=#1565C0;fontColor=#000000;" parent="eksCluster" vertex="1">
+          <mxGeometry x="159.99999999999994" y="439" width="787.5" height="257.5" as="geometry" />
+        </mxCell>
+        <mxCell id="namespaceProd" value="Namespace: widgetapi-prod" style="rounded=1;fillColor=#BBDEFB;strokeColor=#1565C0;fontColor=#000000;" parent="eksCluster" vertex="1">
+          <mxGeometry x="159.99999999999994" y="747.9999999999999" width="787.5" height="257.5" as="geometry" />
+        </mxCell>
+        <mxCell id="ingress" value="Ingress Controller (NGINX/ALB)" style="rounded=1;fillColor=#FFCC80;strokeColor=#FF6F00;fontColor=#000000;" parent="eksCluster" vertex="1">
+          <mxGeometry x="1070.0000000000002" y="410" width="787.5" height="257.5" as="geometry" />
+        </mxCell>
+        <mxCell id="cicd" value="GitHub Actions (CI/CD)" style="rounded=1;fillColor=#B39DDB;strokeColor=#512DA8;fontColor=#000000;" parent="eksCluster" vertex="1">
+          <mxGeometry x="1292.5517391304347" y="790" width="342.39130434782606" height="103" as="geometry" />
+        </mxCell>
+        <mxCell id="ciToIngress" parent="eksCluster" source="cicd" target="ingress" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="alb" value="AWS ALB" style="ellipse;fillColor=#A5D6A7;strokeColor=#2E7D32;fontColor=#000000;" parent="eksCluster" vertex="1">
+          <mxGeometry x="1390" y="80" width="150" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="waf" value="AWS WAF" style="ellipse;fillColor=#EF9A9A;strokeColor=#C62828;fontColor=#000000;" parent="eksCluster" vertex="1">
+          <mxGeometry x="1590" y="80" width="150" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="albToIngress" parent="eksCluster" source="alb" target="ingress" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="wafToAlb" parent="eksCluster" source="waf" target="alb" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="pvc" value="Persistent Volume (PVC)" style="rounded=1;fillColor=#FFF176;strokeColor=#FBC02D;fontColor=#000000;" parent="eksCluster" vertex="1">
+          <mxGeometry x="238.75" y="610" width="461.25" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="secrets" value="AWS Secrets Manager" style="rounded=1;fillColor=#81D4FA;strokeColor=#0288D1;fontColor=#000000;" parent="1" vertex="1">
+          <mxGeometry x="400" y="550" width="250" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="certManager" value="Cert-Manager (TLS Certificates)" style="rounded=1;fillColor=#E1BEE7;strokeColor=#8E24AA;fontColor=#000000;" parent="1" vertex="1">
+          <mxGeometry x="700" y="550" width="250" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="ingressToApp" parent="1" source="ingress" target="widgetapi" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="secretsToApp" parent="1" source="secrets" target="widgetapi" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="certToIngress" parent="1" source="certManager" target="ingress" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

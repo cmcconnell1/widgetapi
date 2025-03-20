@@ -38,6 +38,7 @@ echo "🔹 Using Kubernetes namespace: $NAMESPACE"
 echo "🔹 Ingress Class: $INGRESS_CLASS"
 
 ### **1️⃣ Ensure Cert-Manager Is Installed**
+echo "🚀 Ensuring Cert-Manager is installed..."
 if ! kubectl get namespace cert-manager >/dev/null 2>&1; then
   echo "🚀 Installing Cert-Manager..."
   helm repo add jetstack https://charts.jetstack.io || true
@@ -45,19 +46,28 @@ if ! kubectl get namespace cert-manager >/dev/null 2>&1; then
   helm upgrade --install cert-manager jetstack/cert-manager \
     --namespace cert-manager --create-namespace \
     --set installCRDs=true
-  echo "⌛ Waiting for Cert-Manager to be ready..."
-  kubectl rollout status deployment cert-manager -n cert-manager --timeout=120s
-  kubectl rollout status deployment cert-manager-webhook -n cert-manager --timeout=120s
-  kubectl rollout status deployment cert-manager-cainjector -n cert-manager --timeout=120s
-  echo "✅ Cert-Manager installed successfully!"
-else
-  echo "✅ Cert-Manager is already installed."
 fi
 
-### **2️⃣ Install & Verify Ingress Controller (NGINX for Local, ALB for EKS)**
+echo "⌛ Waiting for Cert-Manager to be ready..."
+kubectl rollout status deployment cert-manager -n cert-manager --timeout=120s
+kubectl rollout status deployment cert-manager-webhook -n cert-manager --timeout=120s
+kubectl rollout status deployment cert-manager-cainjector -n cert-manager --timeout=120s
+echo "✅ Cert-Manager installed and running."
+
+### **2️⃣ Ensure ClusterIssuer Is Configured**
+echo "🚀 Configuring ClusterIssuer for Cert-Manager..."
+kubectl delete clusterissuer selfsigned-cluster-issuer --ignore-not-found
+kubectl apply -f chart/templates/cert-issuer.yaml || {
+  echo "⚠ Failed to apply ClusterIssuer. Retrying in 10 seconds..."
+  sleep 10
+  kubectl apply -f chart/templates/cert-issuer.yaml
+}
+echo "✅ ClusterIssuer configured successfully."
+
+### **3️⃣ Install & Verify Ingress Controller**
 if [[ "$ENV" == "local" ]]; then
   echo "🔹 Using NGINX Ingress for local..."
-  
+
   if ! kubectl get pods -n ingress-nginx | grep -q "ingress-nginx-controller"; then
     echo "🚀 Installing NGINX Ingress Controller..."
     helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
@@ -89,10 +99,10 @@ if [[ "$ENV" == "local" ]]; then
   fi
 else
   echo "🔹 Using AWS ALB Ingress for EKS..."
-  echo "✅ Ensure ALB Ingress Controller is installed for AWS EKS."
+  echo "✅ Ensuring ALB Ingress Controller is installed for AWS EKS."
 fi
 
-### **3️⃣ Cleanup Previous Resources**
+### **4️⃣ Cleanup Previous Resources**
 echo "⚠️ Removing any existing Helm release..."
 helm uninstall widgetapi -n "$NAMESPACE" --no-hooks || true
 
@@ -102,7 +112,7 @@ kubectl delete pvc --all -n "$NAMESPACE" --force --grace-period=0 || true
 kubectl delete secret --all -n "$NAMESPACE" --force --grace-period=0 || true
 kubectl delete configmap --all -n "$NAMESPACE" --force --grace-period=0 || true
 
-### **4️⃣ Ensure Namespace Is Clean**
+### **5️⃣ Ensure Namespace Is Clean**
 echo "🚨 Deleting namespace to prevent auto-recreation..."
 kubectl delete namespace "$NAMESPACE" --force --grace-period=0 || true
 
@@ -114,11 +124,11 @@ done
 
 echo "✅ Namespace $NAMESPACE fully deleted."
 
-### **5️⃣ Recreate Namespace**
+### **6️⃣ Recreate Namespace**
 echo "🚀 Recreating namespace: $NAMESPACE"
 kubectl create namespace "$NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -
 
-### **6️⃣ Deploy WidgetAPI Helm Chart**
+### **7️⃣ Deploy WidgetAPI Helm Chart**
 echo "🚀 Installing Helm release for WidgetAPI..."
 helm upgrade --install widgetapi chart/ \
   --namespace "$NAMESPACE" --create-namespace \
@@ -128,7 +138,7 @@ helm upgrade --install widgetapi chart/ \
 
 echo "✅ Deployment complete for environment: $ENV"
 
-### **7️⃣ Run Helm Tests**
+### **8️⃣ Run Helm Tests**
 echo "🔎 Running Helm tests..."
 if helm test widgetapi --namespace "$NAMESPACE"; then
   echo "✅ Helm tests passed!"
@@ -138,7 +148,7 @@ else
   exit 1
 fi
 
-### **8️⃣ Debugging: Show Running Resources**
+### **9️⃣ Debugging: Show Running Resources**
 echo "🔎 Debugging: Showing Kubernetes resources in $NAMESPACE..."
 kubectl get all -n "$NAMESPACE"
 

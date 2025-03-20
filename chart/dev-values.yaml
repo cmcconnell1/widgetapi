@@ -1,12 +1,11 @@
-# For AWS Dev EKS, we override the namespace, enable ingress, and enforce resource limits.
+# ✅ AWS Dev EKS-specific configuration
+namespace: widgetapi-dev  # 🔹 Ensure namespace is correctly set
 
-# normally this would be higher but not for this POC single replca service
-replicaCount: 1
+replicaCount: 1  # 🔹 Override in production for scaling
 
 image:
-  repository: mayth/simple-upload-server 
-  #tag: dev-latest
-  tag: b0e711dcdfe9be60ed20ef5447a20dbd42f467c7f16772c0581241f9e82ea9ec
+  repository: "mayth/simple-upload-server@sha256:b0e711dcdfe9be60ed20ef5447a20dbd42f467c7f16772c0581241f9e82ea9ec"
+  pullPolicy: Always
 
 service:
   type: ClusterIP
@@ -14,19 +13,23 @@ service:
 
 ingress:
   enabled: true
-  className: alb
+  className: alb  # ✅ Ensure ALB is used
+  host: widgetapi.dev.example.com  # ✅ Used in ingress.yaml template
+  groupName: widgetapi-alb-group  # ✅ ALB group name
+  clusterIssuer: letsencrypt-production  # ✅ Ensure correct ClusterIssuer
+  tlsSecretName: dev-wildcard-cert  # ✅ ACM TLS secret for AWS
   annotations:
     kubernetes.io/ingress.class: "alb"
     alb.ingress.kubernetes.io/scheme: "internet-facing"
-  hosts:
-    - host: dev.widgetapi.example.com
-      paths:
-        - path: /
-          pathType: ImplementationSpecific
-  tls:
-    - hosts:
-        - dev.widgetapi.example.com
-      secretName: dev-wildcard-cert
+    alb.ingress.kubernetes.io/target-type: "ip"
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
+    alb.ingress.kubernetes.io/ssl-redirect: "443"
+    alb.ingress.kubernetes.io/group.name: "widgetapi-alb-group"
+    alb.ingress.kubernetes.io/healthcheck-path: "/healthz"
+
+certManager:
+  clusterIssuer:
+    create: false  # ✅ Do not create ClusterIssuer in AWS (it already exists)
 
 resources:
   requests:
@@ -38,20 +41,20 @@ resources:
 
 persistence:
   enabled: true
-  storageClass: gp2
+  storageClass: gp2  # ✅ AWS EKS-compatible storage class
+  accessMode: ReadWriteOnce
   size: 10Gi
+  mountPath: "/widgetapi/data"  # ✅ Ensure persistent volume is mounted at the correct path
 
 env:
   LOG_LEVEL: "info"
-  # secrets must be created in the same namespace as the deployment like this
-  #kubectl create secret generic db-credentials \
-  #  --namespace widgetapi-dev \
-  #  --from-literal=DATABASE_URL="postgres://user:pass@prod-db.widgetapi.example.com:5432/widgetapi"
-  DATABASE_URL:
-    secretKeyRef:
-      name: db-credentials
-      key: DATABASE_URL
-      
+
+secrets:
+  database:
+    enabled: true
+    secretName: db-credentials  # ✅ Ensure database secret is used correctly
+    secretKey: DATABASE_URL
+
 environment:
-  TOKEN: "sometoken"  # Ensure consistency in naming across templates
-  UPLOAD_LIMIT: "200MB"
+  TOKEN: "sometoken"  # ✅ Consistent token management
+  UPLOAD_LIMIT: "200MB"  # ✅ Correct max upload size
