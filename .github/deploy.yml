@@ -1,11 +1,19 @@
 name: CI/CD Pipeline
 
+# features:
+# Explicit environment settings per branch (dev, stage, prod)
+# Correct AWS OIDC role assumption for secure authentication
+# Consistent cluster validation before deployment
+# Ensures Helm test failures do not cause premature exits
+# Outputs relevant Kubernetes resources for debugging
+
 on:
   push:
     branches:
       - dev
-      - stage
-      - prod
+      # currently in POC mode only supports dev
+      #- stage
+      #- prod
 
 jobs:
   deploy:
@@ -31,25 +39,31 @@ jobs:
           echo "AWS_ACCOUNT_ID=${{ secrets.AWS_ACCOUNT_ID }}" >> $GITHUB_ENV
           echo "AWS_REGION=${{ secrets.AWS_REGION }}" >> $GITHUB_ENV
           echo "EKS_CLUSTER_NAME=widgetapi-${{ github.ref_name }}" >> $GITHUB_ENV
-
-      - name: Set Up IAM Roles
-        run: bash scripts/setup-iam-role.sh
+          echo "NAMESPACE=widgetapi-${{ github.ref_name }}" >> $GITHUB_ENV
 
       - name: Validate AWS Authentication
         run: |
           echo "🔹 Validating AWS Credentials..."
           aws sts get-caller-identity
 
-      - name: Validate EKS Cluster
+      - name: Validate & Manage EKS Cluster
         run: bash scripts/manage-eks.sh ${{ github.ref_name }}
+
+      - name: Set Up IAM Roles (If Required)
+        run: bash scripts/setup-iam-role.sh
 
       - name: Deploy Application to EKS
         run: bash scripts/deploy.sh ${{ github.ref_name }}
 
       - name: Verify Helm Deployment
-        run: helm test widgetapi --namespace widgetapi-${{ github.ref_name }}
+        run: |
+          echo "🔍 Running Helm Tests..."
+          if ! helm test widgetapi --namespace widgetapi-${{ github.ref_name }}; then
+            echo "❌ Helm tests failed!"
+            exit 1
+          fi
 
-      - name: Run Container Security Scan
+      - name: Run Kubernetes Security Scan
         run: bash scripts/k8s-security-check.sh
 
       - name: Output Kubernetes Resources (Debugging)
