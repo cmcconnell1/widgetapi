@@ -1,0 +1,60 @@
+# Ignore Terraform files
+terraform/.terraform/
+terraform/.terraform.lock.hcl
+terraform/terraform.tfstate
+terraform/terraform.tfstate.backup
+terraform/.terraform.tfstate.d/
+terraform/terraform.tfvars
+terraform/*-terraform.tfvars
+terraform/*.tfplan
+terraform/*.auto.tfvars
+# Ignore generated Terraform variable files since we create them dynamicaly
+terraform/*-terraform.tfvars
+
+# Ignore Terraform output extraction files
+scripts/extract-terraform-outputs.sh
+
+# Ignore Helm-related artifacts
+chart/*.tgz
+chart/.helmignore
+chart/values-*.yaml  # Ignore environment-specific overrides if generated dynamically
+chart/templates/test-connection.yaml
+chart/templates/test-readiness.yaml
+
+# Ignore Kubernetes kubeconfig files
+.kube/
+kubeconfig.yaml
+
+# Ignore local environment files
+.env
+.envrc
+*.env
+*.secrets
+
+# Ignore log files
+logs/
+*.log
+
+# Ignore compiled executables and binaries
+bin/
+obj/
+*.exe
+*.dll
+*.out
+*.o
+
+# Ignore IDE/editor-specific files
+.vscode/
+.idea/
+*.swp
+*.swo
+*.bak
+*.tmp
+
+# Ignore macOS & system-specific files
+.DS_Store
+Thumbs.db
+
+# Ignore sensitive data
+secrets/
+

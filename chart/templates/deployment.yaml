@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: widgetapi
+  labels:
+    app: widgetapi
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: widgetapi
+  template:
+    metadata:
+      labels:
+        app: widgetapi
+    spec:
+      securityContext:
+        fsGroup: 1000
+      containers:
+        - name: widgetapi
+          image: "{{ .Values.image.repository }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: 8080
+          args: 
+            - "-addr=0.0.0.0:8080" 
+            - "-document_root=/widgetapi/data"
+          volumeMounts:
+            {{- if .Values.persistence.enabled }}
+            - name: data
+              mountPath: /widgetapi/data
+            {{- end }}
+          env:
+            - name: TOKEN
+              value: {{ .Values.environment.TOKEN | quote }}
+            - name: UPLOAD_LIMIT
+              value: {{ .Values.environment.UPLOAD_LIMIT | quote }}
+            - name: LISTEN_ADDR
+              value: "0.0.0.0:8080"
+            #- name: DATA_PATH
+            #  value: "/widgetapi/data"
+          securityContext:
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop: ["ALL"]
+      volumes:
+        {{- if .Values.persistence.enabled }}
+        - name: data
+          persistentVolumeClaim:
+            claimName: widgetapi-pvc
+        {{- end }}

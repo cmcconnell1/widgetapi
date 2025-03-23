@@ -1,0 +1,43 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ .Release.Name }}-test-file-upload"
+  annotations:
+    "helm.sh/hook": test
+spec:
+  containers:
+  - name: curl
+    image: curlimages/curl:latest
+    command:
+    - sh
+    - -c
+    - |
+      echo "🔍 Testing WidgetAPI file upload and retrieval..."
+
+      TEST_FILE="/tmp/testfile.txt"
+      UNIQUE_NAME="myfile-$(date +%s).txt"
+      UPLOAD_URL="http://{{ .Release.Name }}.{{ .Release.Namespace }}.svc.cluster.local:8080/files/${UNIQUE_NAME}?token=sometoken"
+      DOWNLOAD_URL="http://{{ .Release.Name }}.{{ .Release.Namespace }}.svc.cluster.local:8080/files/${UNIQUE_NAME}?token=sometoken"
+
+      echo "📄 Creating test file..."
+      printf "sample data\n" > "$TEST_FILE"
+
+      echo "📤 Uploading file to: $UPLOAD_URL"
+      RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" -XPUT -Ffile=@"$TEST_FILE" "$UPLOAD_URL")
+
+      if [ "$RESPONSE" != "200" ] && [ "$RESPONSE" != "201" ]; then
+        echo "❌ ERROR: File upload failed with HTTP status $RESPONSE"
+        exit 1
+      fi
+      echo "✅ File uploaded successfully with response: $RESPONSE"
+
+      echo "📥 Downloading file from: $DOWNLOAD_URL"
+      DOWNLOADED_CONTENT=$(curl -s "$DOWNLOAD_URL")
+
+      if [ "$DOWNLOADED_CONTENT" != "sample data" ]; then
+        echo "❌ ERROR: File content mismatch. Expected 'sample data', got '$DOWNLOADED_CONTENT'"
+        exit 1
+      fi
+
+      echo "✅ File upload and retrieval test PASSED!"
+  restartPolicy: Never

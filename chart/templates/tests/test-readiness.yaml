@@ -1,0 +1,40 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ .Release.Name }}-test-readiness"
+  annotations:
+    "helm.sh/hook": test
+spec:
+  containers:
+    - name: curl
+      image: curlimages/curl:latest
+      command:
+        - sh
+        - -c
+        - |
+          echo "🔎 Testing WidgetAPI HTTP readiness..."
+
+          FILE="/tmp/readiness-check.txt"
+          echo "readiness-check" > "$FILE"
+
+          UPLOAD_URL="http://{{ .Release.Name }}.{{ .Release.Namespace }}.svc.cluster.local:8080/files/readiness-check.txt?token=sometoken"
+          DELETE_URL="$UPLOAD_URL"
+
+          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" -X PUT -F file=@$FILE "$UPLOAD_URL")
+
+          if [ "$RESPONSE" = "200" ] || [ "$RESPONSE" = "201" ]; then
+            echo "✅ WidgetAPI readiness check passed (HTTP $RESPONSE)"
+          else
+            echo "❌ ERROR: WidgetAPI readiness check failed (HTTP $RESPONSE)"
+            exit 1
+          fi
+
+          echo "🧹 Cleaning up readiness-check file..."
+          DELETE_RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" -X DELETE "$DELETE_URL")
+
+          if [ "$DELETE_RESPONSE" = "200" ]; then
+            echo "✅ Readiness file cleaned up successfully."
+          else
+            echo "⚠️ WARNING: Failed to clean up readiness file (HTTP $DELETE_RESPONSE)"
+          fi
+  restartPolicy: Never

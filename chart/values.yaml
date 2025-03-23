@@ -1,0 +1,73 @@
+replicaCount: 1
+
+# 🔹 Image settings (Overridden per environment)
+image:
+  repository: mayth/simple-upload-server  # 🔹 Default image
+  tag: "latest"  # 🔹 This should be overridden by `dev-values.yaml`, `stage-values.yaml`, `prod-values.yaml`
+  pullPolicy: Always
+
+# 🔹 Service Configuration
+service:
+  type: ClusterIP  # 🔹 Use ClusterIP by default (NGINX Ingress will provide external access)
+  port: 8080
+
+# 🔹 Ingress Configuration
+ingress:
+  enabled: true
+  className: "nginx"  # 🔹 "nginx" for all environments now
+  host: ""            # 🔹 Override per environment
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    cert-manager.io/cluster-issuer: "selfsigned-cluster-issuer"
+  tls:
+    - hosts:
+        - ""         # 🔹 Override per environment
+      secretName: widgetapi-tls
+
+# 🔹 Cert-Manager ClusterIssuer
+certManager:
+  clusterIssuer:
+    create: true  # Set to false if the issuer is managed externally
+
+# 🔹 Persistence & Storage
+persistence:
+  enabled: true
+  storageClass: "default"  # 🔹 "default" for Local, "gp2"/"gp3" for AWS
+  accessMode: ReadWriteOnce
+  size: 1Gi  # 🔹 Override in dev-values.yaml, stage-values.yaml, prod-values.yaml
+
+# 🔹 Compute Resources
+resources:
+  requests:
+    cpu: "100m"
+    memory: "256Mi"
+  limits:
+    cpu: "500m"
+    memory: "512Mi"
+
+# 🔹 Liveness & Readiness Probes
+livenessProbe:
+  httpGet:
+    path: /healthz
+    port: 8080
+  initialDelaySeconds: 5
+  periodSeconds: 10
+
+readinessProbe:
+  httpGet:
+    path: /healthz
+    port: 8080
+  initialDelaySeconds: 3
+  periodSeconds: 5
+
+# 🔹 Graceful Shutdown
+terminationGracePeriodSeconds: 30
+
+# 🔹 Network Security (Enforced)
+networkPolicy:
+  enabled: true
+
+# 🔹 Environment Variables (Override per environment)
+environment:
+  API_TOKEN: "sometoken"
+  UPLOAD_LIMIT: "50MB"
