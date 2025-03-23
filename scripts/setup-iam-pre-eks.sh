@@ -27,7 +27,7 @@ AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 echo "🔹 Generating IAM policy files..."
 sed -e "s|AWS_ACCOUNT_ID|$AWS_ACCOUNT_ID|g" "$IAM_POLICY_TEMPLATE" > "$IAM_POLICY"
 sed -e "s|AWS_ACCOUNT_ID|$AWS_ACCOUNT_ID|g" \
-    -e "s|YOUR_GITHUB_REPO|$GITHUB_REPO|g" \
+    -e "s|GITHUB_REPO|$GITHUB_REPO|g" \
     "$TRUST_POLICY_TEMPLATE" > "$TRUST_POLICY"
 echo "✅ Policy files created."
 
