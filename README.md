@@ -214,6 +214,11 @@ Run manually:
 helm test widgetapi -n widgetapi-dev
 ```
 
+Helm manually redeploy the chart
+```bash
+helm upgrade --install widgetapi ./chart -n widgetapi-dev --values chart/dev-values.yaml --wait --timeout 5m
+```
+
 ---
 
 ## ❌ Delete EKS Cluster (Cleanup)
