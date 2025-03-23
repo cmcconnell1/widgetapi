@@ -1,0 +1,90 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - dev
+      #- stage
+      #- prod
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ github.ref_name }}
+
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Configure AWS Credentials using OIDC
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Load Environment Variables from ci-env/${{ github.ref_name }}.env
+        run: |
+          echo "🔹 Loading environment file: ./ci-env/${{ github.ref_name }}.env"
+          set -a
+          source ./ci-env/${{ github.ref_name }}.env
+          set +a
+          echo "✅ Loaded environment:"
+          echo "  AWS_EKS_CLUSTER=$AWS_EKS_CLUSTER"
+          echo "  K8S_NAMESPACE=$K8S_NAMESPACE"
+          echo "  EKS_NODE_MIN=$EKS_NODE_MIN"
+          echo "  EKS_NODE_MAX=$EKS_NODE_MAX"
+          echo "  EKS_NODE_DESIRED=$EKS_NODE_DESIRED"
+          echo "  CERTIFICATE_ARN=$CERTIFICATE_ARN"
+          echo "  WAF_ACL_ARN=$WAF_ACL_ARN"
+
+          echo "AWS_ACCOUNT_ID=${{ secrets.AWS_ACCOUNT_ID }}" >> $GITHUB_ENV
+          echo "AWS_REGION=${{ secrets.AWS_REGION }}" >> $GITHUB_ENV
+          echo "EKS_CLUSTER_NAME=$AWS_EKS_CLUSTER" >> $GITHUB_ENV
+          echo "NAMESPACE=$K8S_NAMESPACE" >> $GITHUB_ENV
+          echo "CERTIFICATE_ARN=$CERTIFICATE_ARN" >> $GITHUB_ENV
+          echo "WAF_ACL_ARN=$WAF_ACL_ARN" >> $GITHUB_ENV
+          echo "EKS_NODE_MIN=$EKS_NODE_MIN" >> $GITHUB_ENV
+          echo "EKS_NODE_MAX=$EKS_NODE_MAX" >> $GITHUB_ENV
+          echo "EKS_NODE_DESIRED=$EKS_NODE_DESIRED" >> $GITHUB_ENV
+
+      - name: Validate AWS Authentication
+        run: |
+          echo "🔹 Validating AWS Credentials..."
+          aws sts get-caller-identity
+
+      - name: Run Pre-EKS IAM Setup
+        run: bash scripts/setup-iam-pre-eks.sh ${{ github.ref_name }}
+
+      - name: Create or Validate EKS Cluster
+        run: bash scripts/manage-eks.sh ${{ github.ref_name }}
+
+      - name: Run Post-EKS IAM Setup
+        run: bash scripts/setup-iam-post-eks.sh ${{ github.ref_name }}
+
+      - name: Deploy Application to EKS
+        run: bash scripts/deploy.sh ${{ github.ref_name }}
+
+      - name: Verify Helm Deployment
+        run: |
+          echo "🔍 Running Helm Tests..."
+          if ! helm test widgetapi --namespace ${{ env.NAMESPACE }}; then
+            echo "❌ Helm tests failed!"
+            exit 1
+          fi
+
+      - name: Run Kubernetes Security Scan
+        run: bash scripts/k8s-security-check.sh ${{ env.NAMESPACE }}
+
+      - name: Output Kubernetes Resources (Debugging)
+        if: always()
+        run: |
+          echo "📌 Running pods in ${{ env.NAMESPACE }}"
+          kubectl get pods -n ${{ env.NAMESPACE }} -o wide
+          echo "📌 Services in ${{ env.NAMESPACE }}"
+          kubectl get svc -n ${{ env.NAMESPACE }}
+          echo "📌 Ingress in ${{ env.NAMESPACE }}"
+          kubectl get ingress -n ${{ env.NAMESPACE }}

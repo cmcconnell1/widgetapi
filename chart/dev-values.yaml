@@ -1,0 +1,56 @@
+# ✅ AWS Dev EKS-specific configuration using NGINX Ingress
+namespace: widgetapi-dev
+
+replicaCount: 1  # 🔹 Override in production for scaling
+
+image:
+  repository: "mayth/simple-upload-server@sha256:b0e711dcdfe9be60ed20ef5447a20dbd42f467c7f16772c0581241f9e82ea9ec"
+  pullPolicy: Always
+
+service:
+  type: ClusterIP
+  port: 8080
+
+ingress:
+  enabled: true
+  className: "nginx"
+  host: "widgetapi.dev.example.com"
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    cert-manager.io/cluster-issuer: letsencrypt-production
+  tls:
+    - hosts:
+        - widgetapi.dev.example.com
+      secretName: dev-wildcard-cert
+
+certManager:
+  clusterIssuer:
+    create: false  # 🔹 Issuer is managed globally
+
+resources:
+  requests:
+    cpu: "500m"
+    memory: "1Gi"
+  limits:
+    cpu: "1"
+    memory: "2Gi"
+
+persistence:
+  enabled: true
+  storageClass: gp2  # ✅ EBS-backed storage for AWS EKS
+  accessMode: ReadWriteOnce
+  size: 10Gi
+  mountPath: "/widgetapi/data"
+
+env:
+  LOG_LEVEL: "info"
+
+secrets:
+  database:
+    enabled: true
+    secretName: db-credentials
+    secretKey: DATABASE_URL
+
+environment:
+  TOKEN: "sometoken"
+  UPLOAD_LIMIT: "200MB"

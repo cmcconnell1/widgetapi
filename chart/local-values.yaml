@@ -1,0 +1,49 @@
+# ✅ Local Development Configuration (Minikube/Kind)
+# Ensures proper overrides for local testing.
+
+replicaCount: 1  # ✅ Single replica for local development
+
+image:
+  repository: "mayth/simple-upload-server@sha256:b0e711dcdfe9be60ed20ef5447a20dbd42f467c7f16772c0581241f9e82ea9ec"
+  pullPolicy: Always
+
+service:
+  type: NodePort  # ✅ Use NodePort for local testing
+  port: 8080
+
+ingress:
+  enabled: true
+  className: "nginx"  # ✅ Explicitly use NGINX for local
+  host: "widgetapi.local"
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    cert-manager.io/cluster-issuer: "selfsigned-cluster-issuer"  # ✅ Match expected issuer name
+  tlsSecretName: widgetapi-tls  # ✅ Used by ingress.yaml template
+  tls:
+    enabled: true
+
+certManager:
+  clusterIssuer:
+    create: true  # ✅ Local uses self-signed certs
+
+resources:
+  requests:
+    cpu: "100m"
+    memory: "256Mi"
+  limits:
+    cpu: "250m"
+    memory: "512Mi"
+
+persistence:
+  enabled: true
+  storageClass: "standard"
+  accessMode: ReadWriteOnce
+  size: "1Gi"
+  mountPath: "/widgetapi/data"  # ✅ Used in deployment.yaml
+
+env:
+  LOG_LEVEL: "debug"
+
+environment:
+  TOKEN: "sometoken"
+  UPLOAD_LIMIT: "100MB"
